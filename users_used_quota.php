@@ -41,7 +41,7 @@ class CwpUsersUsedQuota
                 $userQuotaInfo = explode('/', trim($homeQuotaInfo), 2);
                 $userName = trim(str_replace('home/', '', $userQuotaInfo[1]));
                 $userQuota = trim($userQuotaInfo[0]);
-                $quota[$userName] = $userQuota;
+                $quota[$userName] = (int) $userQuota;
             }
         }
         return $quota;
@@ -65,15 +65,15 @@ class CwpUsersUsedQuota
                 };
                 if (isset($quota[$userName])) {
                     if (isset($dbName)) {
-                        $quota[$userName]['db'][$dbName] = $fileQuota;
+                        $quota[$userName]['db'][$dbName] = (int) $fileQuota;
                     }
-                    $quota[$userName]['db_quota'] =+ $fileQuota;
+                    $quota[$userName]['db_quota'] += (int) $fileQuota;
                     $quota[$userName]['db_count']++;
                 } else {
                     if (isset($dbName)) {
-                        $quota[$userName]['db'][$dbName] = $fileQuota;
+                        $quota[$userName]['db'][$dbName] = (int) $fileQuota;
                     }
-                    $quota[$userName]['db_quota'] = $fileQuota;
+                    $quota[$userName]['db_quota'] = (int) $fileQuota;
                     $quota[$userName]['db_count'] = 1;
                 }
                 unset($dbName);
@@ -94,7 +94,7 @@ class CwpUsersUsedQuota
                 $domainQuotaInfo = explode('/', trim($emailQuotaInfo), 2);
                 $domainName = trim(str_replace('var/vmail/', '', $domainQuotaInfo[1]));
                 $emailQuota = trim($domainQuotaInfo[0]);
-                $quota[$domainName] = $emailQuota;
+                $quota[$domainName] = (int) $emailQuota;
             }
         }
 
@@ -140,9 +140,9 @@ class CwpUsersUsedQuota
         foreach($emailQuota as $domain => $quota) {
             $user = $usersDomains['domain'][$domain];
             if (isset($data[$user])) {
-                $data[$user] =+ $quota;
+                $data[$user] += (int) $quota;
             } else {
-                $data[$user] = $quota;
+                $data[$user] = (int) $quota;
             }
         }
 
@@ -158,7 +158,7 @@ $quota = $cwpUsersQuota->calculate();
 
 <div id="tablecontainer">
     <?php
-    $sql = "SELECT u.*, p.package_name, p.disk_quota FROM user u, packages p WHERE p.id = u.package";
+    $sql = "SELECT u.*, p.package_name, p.disk_quota FROM user u, packages p WHERE p.id = u.package ORDER by u.id ASC";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $meta = $stmt->result_metadata();
@@ -198,7 +198,7 @@ $quota = $cwpUsersQuota->calculate();
                 <td><?php echo($result[$i]['id']) ?></td>
                 <td><?php echo $userName ?></td>
                 <td><?php echo($result[$i]['package_name']) ?></td>
-                <td><?php echo($result[$i]['disk_quota'] / 1024) ?> GB</td>
+				<td><?php echo round($result[$i]['disk_quota'] / 1024, 2) ?> GB</td>
                 <td>
                     <?php
                     echo round($quota['home'][$userName] / 1024 / 1024 / 1024, 2);
@@ -266,10 +266,14 @@ $quota = $cwpUsersQuota->calculate();
                     <?php
 
                     $packageMaxQuotaBytes = $result[$i]['disk_quota'] * 1024 * 1024;
-                    $usedQuotaPercent = round($allQuota * 100 / $packageMaxQuotaBytes, 2);
-                    $usedQuotaProgress = round($allQuota * 100 / $packageMaxQuotaBytes, 0);
-
-                    echo "[$usedQuotaPercent %]";
+                    if ($packageMaxQuotaBytes == "0") {
+                        $usedQuotaProgress = 0;
+                        echo "[Unlimited]";
+                    } else {
+                        $usedQuotaPercent = round($allQuota * 100 / $packageMaxQuotaBytes, 2);
+                        $usedQuotaProgress = round($allQuota * 100 / $packageMaxQuotaBytes, 0);
+                    	echo "[$usedQuotaPercent %]";
+                    }
 
                     $progressBarClass = 'progressBarGreen';
                     if ($usedQuotaProgress > 50) {
